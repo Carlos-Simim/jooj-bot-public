@@ -41,7 +41,7 @@ async def on_ready():
     global dono
     dono = await bot.fetch_user(dono_id)
     random_status.start()
-    # send_last_commits.start()
+    send_last_commits.start()
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
