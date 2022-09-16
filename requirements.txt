@@ -1,0 +1,5 @@
+disnake~=2.5.2
+riotwatcher~=3.2.3
+requests~=2.28.1
+PyGithub~=1.55
+boto~=2.49.0
