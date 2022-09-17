@@ -85,7 +85,7 @@ async def send_last_commits():
     testing_channel = bot.get_channel(int(testing_channel_id))
     g = Github(github_token)
     print("Checking for new commits...")
-    repo = g.get_repo("Carlos-Simim/jooj-bot")
+    repo = g.get_repo("Carlos-Simim/jooj-bot-public")
     commits = repo.get_commits()
     for commit in commits:
         if (commit.commit.author.date - timedelta(hours=3)) > datetime.now() - timedelta(minutes=5):
