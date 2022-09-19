@@ -20,7 +20,7 @@ intents = disnake.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True, intents=intents)
 watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
-my_region = 'br1'  # região do bot
+my_region = 'br1'  # região do bot teste
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
 
 morse_code = {
