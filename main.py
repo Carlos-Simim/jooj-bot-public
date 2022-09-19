@@ -2,6 +2,7 @@ import os
 import disnake
 import random
 import requests
+# import testing
 
 from datetime import datetime, timedelta
 from disnake import colour
@@ -13,6 +14,10 @@ lol_api = os.environ['LOL_API']
 token = os.environ['BOT_TOKEN']
 cat_api = os.environ['CAT_API']
 github_token = os.environ['GITHUB_TOKEN']
+# lol_api = testing.LOL_API
+# token = testing.BOT_TOKEN
+# cat_api = testing.CAT_API
+# github_token = testing.GITHUB_TOKEN
 changelogs_channel_id = "1019259894676869141" # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
 testing_channel_id = "1019257889967325254"  # id do canal de testes
@@ -20,7 +25,7 @@ intents = disnake.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True, intents=intents)
 watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
-my_region = 'br1'  # região do bot teste
+my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
 
 morse_code = {
@@ -380,6 +385,9 @@ def get_stats_embed(nick):
     embedVar.add_field(name="Tipo da fila", value=queue_name, inline=True)
     embedVar.add_field(name="Farm", value=farm, inline=True)
     embedVar.add_field(name="Visão", value=visao, inline=True)
+    embedVar.add_field(name="Wards compradas", value=control_wards, inline=True)
+    embedVar.add_field(name="Runa Primária", value=rune, inline=True)
+    embedVar.add_field(name="Dano a estruturas", value=dano_estruturas, inline=True)
     embedVar.add_field(name="Resultado", value=final, inline=True)
     embedVar.add_field(name="Última partida jogada", value=ultima_atualizacao, inline=True)
     embedVar.set_thumbnail(
@@ -388,13 +396,30 @@ def get_stats_embed(nick):
     return embedVar
 
 
+def get_rune_name(rune_name):
+    url = "http://ddragon.leagueoflegends.com/cdn/12.16.1/data/en_US/runesReforged.json"
+    response = requests.get(url)
+    runas_dicionário: dict = {"Dark Harvest": "Colheita Sombria", "Electrocute": "Eletrocutar", "Predator": "Predador",
+                              "Hail of Blades": "Chuva de Lâminas", "Summon Aery": "Aery", "Arcane Comet": "Cometa",
+                              "Phase Rush": "Ímpeto", "Lethal Tempo": "Ritmo Fatal", "Grasp of the Undying": "Grasp",
+                              "Aftershock": "Pós-Choque", "Glacial Augment": "Gelinho", "Unsealed Spellbook": "Livro"}
+
+    for rune_tree in response.json():
+        for rune_var in rune_tree['slots']:
+            for runes in rune_var['runes']:
+                if runes['id'] == rune_name:
+                    return runas_dicionário.get( runes['name'])
+
+    return "Runa não encontrada"
+
+
 @bot.slash_command(name="perfil",
                    description="Retorna algumas informações do perfil da pessoa e da última partida jogada.")
 async def perfil(ctx, *, nick: str):
     await ctx.response.defer()
 
     global derrotas, vitorias, kills, deaths, assists, pings, drags, pick, lane, dano, killingspree, visao, red, green, rank, tier, final_bool, winrate, pdl, queue_name, farm, barons, \
-        final, ultima_atualizacao
+        final, ultima_atualizacao, control_wards, rune, dano_estruturas
 
     red = colour.Color.red()
     green = colour.Color.green()
@@ -433,6 +458,10 @@ async def perfil(ctx, *, nick: str):
             queue_name = get_queue_name(last_match['info']['queueId'])
             barons = player['baronKills']
             farm = player['totalMinionsKilled']
+            control_wards = player['visionWardsBoughtInGame']
+            rune_name = player['perks']['styles'][0]['selections'][0]['perk']
+            rune = get_rune_name(rune_name)
+            dano_estruturas = player['damageDealtToObjectives']
 
     if final_bool is True:
         final = 'Vitória'
