@@ -1,4 +1,6 @@
 import os
+import time
+
 import disnake
 import random
 import requests
@@ -10,17 +12,25 @@ from disnake.ext import commands, tasks
 from github import Github
 from riotwatcher import LolWatcher
 
+import testing
+
 lol_api = os.environ['LOL_API']
 token = os.environ['BOT_TOKEN']
 cat_api = os.environ['CAT_API']
 github_token = os.environ['GITHUB_TOKEN']
+currency_api = os.environ['CURRENCY_API']
+stock_api = os.environ['STOCK_API']
 # lol_api = testing.LOL_API
 # token = testing.BOT_TOKEN
 # cat_api = testing.CAT_API
 # github_token = testing.GITHUB_TOKEN
-changelogs_channel_id = "1019259894676869141" # ID do canal de changelogs
+# currency_api = testing.CURRENCY_API
+# stock_api = testing.STOCK_API
+
+changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
 testing_channel_id = "1019257889967325254"  # id do canal de testes
+testing_server_id = testing.TESTING_SERVER
 intents = disnake.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True, intents=intents)
@@ -84,6 +94,128 @@ async def morse(ctx, *, texto):
         await ctx.send(content=texto_normal)
 
 
+@bot.slash_command(name="acoes",
+                   description="Retorna algumas informações sobre uma determinada ação. Exemplo: TSLA, IBM, NIO, etc.")
+async def acoes(ctx, *, acao):
+    await ctx.response.defer()
+    start = time.perf_counter()
+    acao = acao.upper()
+    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={acao}&apikey={stock_api}'
+    r = requests.get(url)
+    data = r.json()
+    content_temp = data['Time Series (Daily)']
+    content_temp = list(content_temp.items())
+    conversao = get_conversao("USD", "BRL", 1)
+
+    contador = 0
+    content: list = []
+    while contador < 12:
+        content.append(content_temp[contador])
+        contador += 1
+
+    embed = disnake.Embed(title=f"{acao}", color=disnake.Color.blue())
+    for item in content:
+        date_var = item[0]
+        date_var = date_var[8:10] + '/' + date_var[5:7] + '/' + date_var[0:4]
+        open_var = float(item[1]['1. open']) * conversao
+        open_var = round(open_var, 2)
+        high_var = float(item[1]['2. high']) * conversao
+        high_var = round(high_var, 2)
+        low_var = float(item[1]['3. low']) * conversao
+        low_var = round(low_var, 2)
+        close_var = float(item[1]['4. close']) * conversao
+        close_var = round(close_var, 2)
+        embed.add_field(name=f"{date_var}",
+                        value=f"Abertura: R${open_var}\nAlta: R${high_var}\nBaixa: R${low_var}\nFechamento: R${close_var}",
+                        inline=True)
+
+    end = time.perf_counter()
+    tempo = round(end - start, 2)
+    embed.set_footer(text=f"Tempo de resposta: {tempo} segundos")
+    await ctx.send(embed=embed)
+
+
+@acoes.error
+async def acoes_error(ctx, error):
+    print(error)
+    await ctx.send("Ação não encontrada.")
+
+
+def currency_name_to_code(currency_name):
+    currency_name = currency_name.upper()
+    currency_code = {
+        "USD": "USD",
+        "DOLAR": "USD",
+        "DÓLAR": "USD",
+        "REAL": "BRL",
+        "BRL": "BRL",
+        "EURO": "EUR",
+        "EUR": "EUR",
+        "LIBRA": "GBP",
+        "GBP": "GBP",
+        "IENE": "JPY",
+        "JPY": "JPY",
+        "BITCOIN": "BTC",
+        "BTC": "BTC",
+        "LITECOIN": "LTC",
+        "LTC": "LTC",
+        "ETHEREUM": "ETH",
+        "ETH": "ETH",
+        "XRP": "XRP",
+        "RIPPLE": "XRP",
+        "CARDANO": "ADA",
+        "ADA": "ADA",
+        "TETHER": "USDT",
+        "USDT": "USDT",
+        "BINANCECOIN": "BNB",
+        "BNB": "BNB",
+        "POLKADOT": "DOT",
+        "DOT": "DOT",
+        "UNISWAP": "UNI",
+        "UNI": "UNI",
+        "BITCOINCASH": "BCH",
+        "BCH": "BCH",
+        "LUMEN": "XLM",
+        "XLM": "XLM",
+        "CHAINLINK": "LINK",
+        "LINK": "LINK",
+        "STELLAR": "XLM"
+    }
+    return currency_code.get(currency_name)
+
+
+@bot.slash_command(name="moeda", description="Converte uma moeda para outra.")
+async def converter_moeda(ctx, moeda_origem: str, moeda_destino: str, valor: float):
+    await ctx.response.defer()
+    result = get_conversao(moeda_origem, moeda_destino, valor)
+    await ctx.send(f"{valor} {moeda_origem} = {round(result * valor, 2)} {moeda_destino}")
+
+
+def get_conversao(moeda_origem, moeda_destino, valor):
+    moeda_origem = moeda_origem.upper()
+    moeda_destino = moeda_destino.upper()
+    payload = {}
+    headers = {
+        "apikey": currency_api
+    }
+
+    moeda_origem = currency_name_to_code(moeda_origem)
+    moeda_destino = currency_name_to_code(moeda_destino)
+
+    url = f"https://api.apilayer.com/exchangerates_data/convert?to={moeda_destino}&from={moeda_origem}&amount={valor}"
+    response = requests.request("GET", url, headers=headers, data=payload)
+    result = response.json()
+    return result['info']['rate']
+
+
+@converter_moeda.error
+async def converter_moeda_error(ctx, error):
+    print(error)
+    await ctx.send(
+        "Um erro desconhecido ocorreu. Tente escrever a moeda corretamente, sem plural ou abreviações. Exemplo: Dólar, Real, Bitcoin, etc."
+        "\nCaso o erro persista, utilize o código da moeda por enquanto que em breve era será adicionada a lista de traduções. Exemplo: USD, BRL, BTC, etc.")
+
+
 @tasks.loop(minutes=5)
 async def send_last_commits():
     channel = bot.get_channel(int(changelogs_channel_id))
@@ -94,7 +226,8 @@ async def send_last_commits():
     commits = repo.get_commits()
     for commit in commits:
         if (commit.commit.author.date - timedelta(hours=3)) > datetime.now() - timedelta(minutes=5):
-            embed = disnake.Embed(title=f"Última atualização - v{commits.totalCount}", color=disnake.colour.Color.green())
+            embed = disnake.Embed(title=f"Última atualização - v{commits.totalCount}",
+                                  color=disnake.colour.Color.green())
             embed.add_field(name="Descrição", value=commit.commit.message, inline=False)
             embed.add_field(name="Data", value=(commit.commit.author.date - timedelta(hours=3)), inline=False)
             print("Commits enviados")
@@ -272,7 +405,8 @@ async def avatar(ctx, user: disnake.User = None):
         await ctx.send("Você não tem avatar.")
 
 
-@bot.slash_command(name="elos", description="Retorna o ELO + Divisão + Campeão de todos os jogadores de uma partida ativa.")
+@bot.slash_command(name="elos",
+                   description="Retorna o ELO + Divisão + Campeão de todos os jogadores de uma partida ativa.")
 async def elos(ctx, *, nick: str):
     await ctx.response.defer()
     me = getSummonerByName(nick)
@@ -408,7 +542,7 @@ def get_rune_name(rune_name):
         for rune_var in rune_tree['slots']:
             for runes in rune_var['runes']:
                 if runes['id'] == rune_name:
-                    return runas_dicionário.get( runes['name'])
+                    return runas_dicionário.get(runes['name'])
 
     return "Runa não encontrada"
 
