@@ -12,8 +12,6 @@ from disnake.ext import commands, tasks
 from github import Github
 from riotwatcher import LolWatcher
 
-import testing
-
 lol_api = os.environ['LOL_API']
 token = os.environ['BOT_TOKEN']
 cat_api = os.environ['CAT_API']
