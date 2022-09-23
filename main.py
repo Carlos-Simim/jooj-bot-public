@@ -4,9 +4,10 @@ import time
 import disnake
 import random
 import requests
-# import testing
 
 from datetime import datetime, timedelta
+
+import roman
 from disnake import colour
 from disnake.ext import commands, tasks
 from github import Github
@@ -18,17 +19,19 @@ cat_api = os.environ['CAT_API']
 github_token = os.environ['GITHUB_TOKEN']
 currency_api = os.environ['CURRENCY_API']
 stock_api = os.environ['STOCK_API']
+
+# import testing
 # lol_api = testing.LOL_API
 # token = testing.BOT_TOKEN
 # cat_api = testing.CAT_API
 # github_token = testing.GITHUB_TOKEN
 # currency_api = testing.CURRENCY_API
 # stock_api = testing.STOCK_API
+# testing_server_id = int(testing.TESTING_SERVER)
 
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
 testing_channel_id = "1019257889967325254"  # id do canal de testes
-# testing_server_id = testing.TESTING_SERVER
 intents = disnake.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True, intents=intents)
@@ -58,6 +61,24 @@ async def on_ready():
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
+
+@bot.slash_command(name="romano", description="Converte um número para romano e vice-versa")
+async def romano(ctx, number):
+    if number.isdigit():
+        number = int(number)
+        if number > 4999:
+            await ctx.send("O número não pode ser maior que 4999")
+            return
+        else:
+            await ctx.send(f"{number} = {roman.toRoman(number)}")
+    else:
+        await ctx.send(f"{number} = {roman.fromRoman(number)}")
+
+
+@romano.error
+async def romano_error(ctx, error):
+    await ctx.send("Um erro desconhecido ccorreu no comando. O erro foi reportado ao dono do bot")
+    await dono.send(f"Um erro desconhecido ccorreu no comando:\n{error}")
 
 @bot.slash_command(name="morse", description="Traduz um texto para código morse e vice-versa.")
 async def morse(ctx, *, texto):
@@ -182,7 +203,7 @@ def currency_name_to_code(currency_name):
     return currency_code.get(currency_name)
 
 
-@bot.slash_command(name="moeda", description="Converte uma moeda para outra.")
+@bot.slash_command(name="moeda", description="Converte uma moeda para outra. Exemplo: 1 dolar para real")
 async def converter_moeda(ctx, moeda_origem: str, moeda_destino: str, valor: float):
     await ctx.response.defer()
     result = get_conversao(moeda_origem, moeda_destino, valor)
