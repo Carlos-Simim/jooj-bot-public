@@ -30,7 +30,7 @@ stock_api = os.environ['STOCK_API']
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
 testing_channel_id = "1019257889967325254"  # id do canal de testes
-testing_server_id = testing.TESTING_SERVER
+# testing_server_id = testing.TESTING_SERVER
 intents = disnake.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True, intents=intents)
