@@ -38,7 +38,7 @@ bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True,
 watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
 my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
-
+# TODO Implementar função de checar os próximos IPOs de empresas
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
     'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
@@ -125,12 +125,15 @@ async def acoes(ctx, *, acao):
     content_temp = data['Time Series (Daily)']
     content_temp = list(content_temp.items())
     conversao = get_conversao("USD", "BRL", 1)
-
     contador = 0
     content: list = []
     while contador < 12:
         content.append(content_temp[contador])
         contador += 1
+
+    url_detalhes = f'https://www.alphavantage.co/query?function=OVERVIEW&symbol={acao}&apikey={stock_api}'
+    r_detalhes = requests.get(url_detalhes)
+    data_detalhes = r_detalhes.json()
 
     embed = disnake.Embed(title=f"{acao}", color=disnake.Color.blue())
     for item in content:
@@ -147,6 +150,9 @@ async def acoes(ctx, *, acao):
         embed.add_field(name=f"{date_var}",
                         value=f"Abertura: R${open_var}\nAlta: R${high_var}\nBaixa: R${low_var}\nFechamento: R${close_var}",
                         inline=True)
+    embed.add_field(name="Nome", value=data_detalhes['Name'], inline=True)
+    embed.add_field(name="Industria", value=data_detalhes['Industry'], inline=True)
+    embed.add_field(name="Beta", value=data_detalhes['Beta'], inline=True)
 
     end = time.perf_counter()
     tempo = round(end - start, 2)
