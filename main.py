@@ -19,6 +19,7 @@ cat_api = os.environ['CAT_API']
 github_token = os.environ['GITHUB_TOKEN']
 currency_api = os.environ['CURRENCY_API']
 stock_api = os.environ['STOCK_API']
+version = os.environ['HEROKU_RELEASE_VERSION']
 
 # import testing
 # lol_api = testing.LOL_API
@@ -251,7 +252,7 @@ async def send_last_commits():
     commits = repo.get_commits()
     for commit in commits:
         if (commit.commit.author.date - timedelta(hours=3)) > datetime.now() - timedelta(minutes=5):
-            embed = disnake.Embed(title=f"Última atualização - v{commits.totalCount}",
+            embed = disnake.Embed(title=f"Última atualização - v{version}",
                                   color=disnake.colour.Color.green())
             embed.add_field(name="Descrição", value=commit.commit.message, inline=False)
             date = commit.commit.author.date - timedelta(hours=3)
