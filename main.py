@@ -252,7 +252,7 @@ async def send_last_commits():
     commits = repo.get_commits()
     for commit in commits:
         if (commit.commit.author.date - timedelta(hours=3)) > datetime.now() - timedelta(minutes=5):
-            embed = disnake.Embed(title=f"Última atualização - v{version}",
+            embed = disnake.Embed(title=f"Última atualização - {version}",
                                   color=disnake.colour.Color.green())
             embed.add_field(name="Descrição", value=commit.commit.message, inline=False)
             date = commit.commit.author.date - timedelta(hours=3)
