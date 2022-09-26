@@ -256,7 +256,7 @@ async def send_last_commits():
                                   color=disnake.colour.Color.green())
             embed.add_field(name="Descrição", value=commit.commit.message, inline=False)
             date = commit.commit.author.date - timedelta(hours=3)
-            embed.add_field(name="Data", value=(date.strftime("%d/%m/%Y")), inline=False)
+            embed.add_field(name="Data", value=(date.strftime("%d/%m/%Y - %H:%M")), inline=False)
             print("Commits enviados")
             await testing_channel.send(embed=embed)
             await channel.send(embed=embed)
