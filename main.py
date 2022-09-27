@@ -1,3 +1,4 @@
+import csv
 import os
 import time
 
@@ -13,22 +14,23 @@ from disnake.ext import commands, tasks
 from github import Github
 from riotwatcher import LolWatcher
 
-lol_api = os.environ['LOL_API']
-token = os.environ['BOT_TOKEN']
-cat_api = os.environ['CAT_API']
-github_token = os.environ['GITHUB_TOKEN']
-currency_api = os.environ['CURRENCY_API']
-stock_api = os.environ['STOCK_API']
-version = os.environ['HEROKU_RELEASE_VERSION']
+# lol_api = os.environ['LOL_API']
+# token = os.environ['BOT_TOKEN']
+# cat_api = os.environ['CAT_API']
+# github_token = os.environ['GITHUB_TOKEN']
+# currency_api = os.environ['CURRENCY_API']
+# stock_api = os.environ['STOCK_API']
+# version = os.environ['HEROKU_RELEASE_VERSION']
 
-# import testing
-# lol_api = testing.LOL_API
-# token = testing.BOT_TOKEN
-# cat_api = testing.CAT_API
-# github_token = testing.GITHUB_TOKEN
-# currency_api = testing.CURRENCY_API
-# stock_api = testing.STOCK_API
-# testing_server_id = int(testing.TESTING_SERVER)
+import testing
+lol_api = testing.LOL_API
+token = testing.BOT_TOKEN
+cat_api = testing.CAT_API
+github_token = testing.GITHUB_TOKEN
+currency_api = testing.CURRENCY_API
+stock_api = testing.STOCK_API
+testing_server_id = int(testing.TESTING_SERVER)
+version = "167"
 
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
@@ -61,6 +63,29 @@ async def on_ready():
     send_last_commits.start()
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+
+
+@bot.slash_command(name="ipo", description="Mostra os próximos IPOs de empresas")
+async def ipo(ctx):
+    CSV_URL = f'https://www.alphavantage.co/query?function=IPO_CALENDAR&apikey={stock_api}'
+    with requests.Session() as s:
+        download = s.get(CSV_URL)
+        decoded_content = download.content.decode('utf-8')
+        cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+        my_list = list(cr)
+        embed = disnake.Embed(title="Próximos IPOs", color=disnake.colour.Color.red())
+
+        try:
+            print(my_list[1])
+        except:
+            await ctx.send("Não foi possível encontrar nenhum IPO")
+            return
+
+        for i in range(1, len(my_list)):
+            embed.add_field(name=my_list[i][0], value=f"Nome: {my_list[i][1]}\n"
+                                                      f"Data: {my_list[i][2]}\n"
+                                                      f"Exchange: {my_list[i][6]}", inline=True)
+        await ctx.send(embed=embed)
 
 
 @bot.slash_command(name="romano", description="Converte um número para romano e vice-versa")
