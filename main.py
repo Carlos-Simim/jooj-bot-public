@@ -23,6 +23,7 @@ from riotwatcher import LolWatcher
 # version = os.environ['HEROKU_RELEASE_VERSION']
 
 import testing
+
 lol_api = testing.LOL_API
 token = testing.BOT_TOKEN
 cat_api = testing.CAT_API
@@ -41,7 +42,7 @@ bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True,
 watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
 my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
-# TODO Implementar função de checar os próximos IPOs de empresas
+# TODO Criar comando de polls
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
     'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
@@ -65,27 +66,30 @@ async def on_ready():
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 
-@bot.slash_command(name="ipo", description="Mostra os próximos IPOs de empresas")
+@bot.slash_command(name="ipo", description="Mostra os próximos IPOs de empresas. (Initial Public Offering)")
 async def ipo(ctx):
+    my_list = get_ipo_list()
+    embed = disnake.Embed(title="Próximos IPOs", color=disnake.colour.Color.red())
+    try:
+        print(my_list[1])
+    except:
+        await ctx.send("Não foi possível encontrar nenhum IPO")
+        return
+    for i in range(1, len(my_list)):
+        embed.add_field(name=my_list[i][0], value=f"Nome: {my_list[i][1]}\n"
+                                                  f"Data: {my_list[i][2]}\n"
+                                                  f"Exchange: {my_list[i][6]}", inline=True)
+    await ctx.send(embed=embed)
+
+
+def get_ipo_list():
     CSV_URL = f'https://www.alphavantage.co/query?function=IPO_CALENDAR&apikey={stock_api}'
     with requests.Session() as s:
         download = s.get(CSV_URL)
         decoded_content = download.content.decode('utf-8')
         cr = csv.reader(decoded_content.splitlines(), delimiter=',')
         my_list = list(cr)
-        embed = disnake.Embed(title="Próximos IPOs", color=disnake.colour.Color.red())
-
-        try:
-            print(my_list[1])
-        except:
-            await ctx.send("Não foi possível encontrar nenhum IPO")
-            return
-
-        for i in range(1, len(my_list)):
-            embed.add_field(name=my_list[i][0], value=f"Nome: {my_list[i][1]}\n"
-                                                      f"Data: {my_list[i][2]}\n"
-                                                      f"Exchange: {my_list[i][6]}", inline=True)
-        await ctx.send(embed=embed)
+        return my_list
 
 
 @bot.slash_command(name="romano", description="Converte um número para romano e vice-versa")
@@ -103,11 +107,16 @@ async def romano(ctx, number):
 
 @romano.error
 async def romano_error(ctx, error):
-    await ctx.send("Um erro desconhecido ccorreu no comando. O erro foi reportado ao dono do bot")
+    await ctx.send("Um erro desconhecido ocorreu no comando. O erro foi reportado ao dono do bot")
     await dono.send(f"Um erro desconhecido ccorreu no comando:\n{error}")
+
 
 @bot.slash_command(name="morse", description="Traduz um texto para código morse e vice-versa.")
 async def morse(ctx, *, texto):
+    await ctx.send(get_morse_translation(texto))
+
+
+def get_morse_translation(texto):
     texto = texto.lower()
     texto_morse = ''
     texto_normal = ''
@@ -120,7 +129,6 @@ async def morse(ctx, *, texto):
                               '.----.': "'", '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')', '.-...': '&',
                               '---...': ':', '-.-.-.': ';', '-...-': '=', '.-.-.': '+', '-....-': '-', '..--.-': '_',
                               '.-..-.': '"', '...-..-': '$', '.--.-.': '@', '...---...': 'SOS', '/': ' '}
-
     if texto.count('.') == 0 and texto.count('-') == 0:
         texto = texto.upper()
         for letra in texto:
@@ -128,7 +136,7 @@ async def morse(ctx, *, texto):
                 texto_morse += morse_code.get(letra) + ' '
             except TypeError:
                 texto_morse += letra + ' '
-        await ctx.send(content=texto_morse)
+        return texto_morse
     else:
         for letra in texto.split():
             try:
@@ -136,7 +144,7 @@ async def morse(ctx, *, texto):
             except TypeError:
                 texto_normal += letra
         texto_normal = texto_normal.upper()
-        await ctx.send(content=texto_normal)
+        return texto_normal
 
 
 @bot.slash_command(name="acoes",
@@ -144,22 +152,7 @@ async def morse(ctx, *, texto):
 async def acoes(ctx, *, acao):
     await ctx.response.defer()
     start = time.perf_counter()
-    acao = acao.upper()
-    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={acao}&apikey={stock_api}'
-    r = requests.get(url)
-    data = r.json()
-    content_temp = data['Time Series (Daily)']
-    content_temp = list(content_temp.items())
-    conversao = get_conversao("USD", "BRL", 1)
-    contador = 0
-    content: list = []
-    while contador < 12:
-        content.append(content_temp[contador])
-        contador += 1
-
-    url_detalhes = f'https://www.alphavantage.co/query?function=OVERVIEW&symbol={acao}&apikey={stock_api}'
-    r_detalhes = requests.get(url_detalhes)
-    data_detalhes = r_detalhes.json()
+    content, conversao, data_detalhes = get_acoes_info(acao)
 
     embed = disnake.Embed(title=f"{acao}", color=disnake.Color.blue())
     for item in content:
@@ -184,6 +177,27 @@ async def acoes(ctx, *, acao):
     tempo = round(end - start, 2)
     embed.set_footer(text=f"Tempo de resposta: {tempo} segundos")
     await ctx.send(embed=embed)
+
+
+def get_acoes_info(acao):
+    acao = acao.upper()
+    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={acao}&apikey={stock_api}'
+    r = requests.get(url)
+    data = r.json()
+    content_temp = data['Time Series (Daily)']
+    content_temp = list(content_temp.items())
+    conversao = get_conversao("USD", "BRL", 1)
+    contador = 0
+    content: list = []
+    while contador < 12:
+        content.append(content_temp[contador])
+        contador += 1
+
+    url_detalhes = f'https://www.alphavantage.co/query?function=OVERVIEW&symbol={acao}&apikey={stock_api}'
+    r_detalhes = requests.get(url_detalhes)
+    data_detalhes = r_detalhes.json()
+
+    return content, conversao, data_detalhes
 
 
 @acoes.error
@@ -238,6 +252,13 @@ def currency_name_to_code(currency_name):
 @bot.slash_command(name="moeda", description="Converte uma moeda para outra. Exemplo: 1 dolar para real")
 async def converter_moeda(ctx, moeda_origem: str, moeda_destino: str, valor: float):
     await ctx.response.defer()
+
+    try:
+        moeda_origem = currency_name_to_code(moeda_origem)
+        moeda_destino = currency_name_to_code(moeda_destino)
+    except:
+        print("Moeda não encontrada.")
+
     result = get_conversao(moeda_origem, moeda_destino, valor)
     await ctx.send(f"{valor} {moeda_origem} = {round(result * valor, 2)} {moeda_destino}")
 
@@ -271,10 +292,9 @@ async def converter_moeda_error(ctx, error):
 async def send_last_commits():
     channel = bot.get_channel(int(changelogs_channel_id))
     testing_channel = bot.get_channel(int(testing_channel_id))
-    g = Github(github_token)
     print("Checking for new commits...")
-    repo = g.get_repo("Carlos-Simim/jooj-bot-public")
-    commits = repo.get_commits()
+    commits = get_commits("Carlos-Simim/jooj-bot-public")
+
     for commit in commits:
         if (commit.commit.author.date - timedelta(hours=3)) > datetime.now() - timedelta(minutes=5):
             embed = disnake.Embed(title=f"Última atualização - {version}",
@@ -287,20 +307,11 @@ async def send_last_commits():
             await channel.send(embed=embed)
 
 
-# TODO - Arrumar comando pra gerar polls
-@bot.slash_command(name="poll", description="Cria uma enquete de 0 a 4 opções - Ainda não funciona")
-async def poll(self, ctx, question: str, option1: str = None, option2: str = None, option3: str = None,
-               option4: str = None):
-    if option1 is None and option2 is None and option3 is None and option4 is None:
-        embed = get_poll_embed(question)
-        # send embed with reactions
-        print(await ctx.send(embed=embed))
-        print()
-
-
-def get_poll_embed(question):
-    embed = disnake.Embed(title=question, color=disnake.colour.Color.red())
-    return embed
+def get_commits(repository):
+    g = Github(github_token)
+    repo = g.get_repo(repository)
+    commits = repo.get_commits()
+    return commits
 
 
 @tasks.loop(seconds=180)
@@ -315,10 +326,10 @@ async def random_status():
 @bot.slash_command(name="pais", description="Retorna informações sobre um país")
 async def pais(ctx, *, pais: str):
     await ctx.response.defer()
-    for word in aka_brasil:
-        if pais.lower() == word:
-            pais = "Brazil"
-            break
+
+    if aka_brasil.__contains__(pais.lower()):
+        pais = "Brazil"
+
     try:
         info = getPaisInfo(pais)
     except:
@@ -399,23 +410,25 @@ async def coinflip(ctx):
 @bot.slash_command(name="gato", description="Retorna um gato fofo (muito based).")
 async def gato(ctx, user: disnake.User = None):
     await ctx.response.defer()
+    gato_var = getRandomCat()
     if user is not None:
-        await user.send(getRandomCat())
+        await user.send(gato_var)
         await ctx.send("Gato enviado para " + user.name)
         return
 
-    await ctx.send(getRandomCat())
+    await ctx.send(gato_var)
 
 
 @bot.slash_command(name="cachorro", description="Retorna um cachorro fofo (muito based).")
 async def cachorro(ctx, user: disnake.User = None):
     await ctx.response.defer()
+    cachorro_var = getRandomDog()
     if user is not None:
-        await user.send(getRandomDog())
+        await user.send(cachorro_var)
         await ctx.send("Cachorro enviado para " + user.name)
         return
 
-    await ctx.send(getRandomDog())
+    await ctx.send(cachorro_var)
 
 
 def getRandomCat():
@@ -432,7 +445,6 @@ def getRandomDog():
 
 @bot.slash_command(name="limpar", description="Limpa as últimas N mensagens no chat que for usado.")
 async def limpar(ctx, quantidade: int):
-    await ctx.send("Limpando mensagens...")
     if ctx.author.guild_permissions.administrator:
         await ctx.channel.purge(limit=int(quantidade))
         await ctx.send(f"{ctx.author.mention} limpou ``{quantidade}`` mensagens!")
@@ -461,28 +473,31 @@ async def avatar(ctx, user: disnake.User = None):
                    description="Retorna o ELO + Divisão + Campeão de todos os jogadores de uma partida ativa.")
 async def elos(ctx, *, nick: str):
     await ctx.response.defer()
-    me = getSummonerByName(nick)
+    live_match = get_live_match(nick)
+
     embedVar = disnake.Embed(title="Elos na partida de {}".format(nick), color=0xff9900)
+    for player in live_match['participants']:
+        name = player['summonerName']
+        champion_name = get_champion_name(player['championId'])
 
-    try:
-        live_match = watcher.spectator.by_summoner(region=my_region, encrypted_summoner_id=me['id'])
-    except:
-        await ctx.send('O jogador não está em nenhuma partida no momento, ou você informou um nick inválido.')
-        return
+        player_elo_info = watcher.league.by_summoner(my_region, player['summonerId'])
 
-    else:
-        for player in live_match['participants']:
-            name = player['summonerName']
-            champion_name = get_champion_name(player['championId'])
+        embedVar.add_field(
+            name=f"{name}: {player_elo_info[0]['tier']} {player_elo_info[0]['rank']} ({champion_name})",
+            value="\u200b", inline=True)
 
-            player_elo_info = watcher.league.by_summoner(my_region, player['summonerId'])
+    await ctx.send(embed=embedVar)
 
-            embedVar.add_field(
-                name=f"{name}: {player_elo_info[0]['tier']} {player_elo_info[0]['rank']} ({champion_name})",
-                value="\u200b", inline=True)
 
-        await ctx.send(embed=embedVar)
-        return
+@elos.error
+async def elos_error(ctx, error):
+    await ctx.send(f'Não foi possível encontrar a partida de ``{ctx.options["nick"]}``')
+    await dono.send(error)
+
+
+def get_live_match(nick):
+    me = getSummonerByName(nick)
+    return watcher.spectator.by_summoner(region=my_region, encrypted_summoner_id=me['id'])
 
 
 @bot.slash_command(name='oi', description='Pra caso você esteja carente :)')
@@ -546,42 +561,6 @@ def get_translation_stats(word):
     return stats_dicionario.get(word)
 
 
-def get_stats_embed(nick):
-    if final_bool:
-        embedVar = disnake.Embed(title="Estatísticas de " + nick, color=green)
-    else:
-        embedVar = disnake.Embed(title="Estatísticas de " + nick, color=red)
-
-    embedVar.add_field(name="Vitórias", value=vitorias, inline=True)
-    embedVar.add_field(name="Derrotas", value=derrotas, inline=True)
-    embedVar.add_field(name="Winrate", value=str(winrate) + "%", inline=True)
-    embedVar.add_field(name=f"{tier} {rank} ({pdl} pdl)", inline=False,
-                       value='=====================')
-    embedVar.add_field(name="Última partida:", value="\u200b", inline=False)
-    embedVar.add_field(name="Kills", value=kills, inline=True)
-    embedVar.add_field(name="Deaths", value=deaths, inline=True)
-    embedVar.add_field(name="Assists", value=assists, inline=True)
-    embedVar.add_field(name="Pings", value=pings, inline=True)
-    embedVar.add_field(name="Dragões", value=drags, inline=True)
-    embedVar.add_field(name="Barons", value=barons, inline=True)
-    embedVar.add_field(name="Pick", value=pick, inline=True)
-    embedVar.add_field(name="Lane", value=lane, inline=True)
-    embedVar.add_field(name="Dano", value=dano, inline=True)
-    embedVar.add_field(name="Killing spree", value=killingspree, inline=True)
-    embedVar.add_field(name="Tipo da fila", value=queue_name, inline=True)
-    embedVar.add_field(name="Farm", value=farm, inline=True)
-    embedVar.add_field(name="Visão", value=visao, inline=True)
-    embedVar.add_field(name="Wards compradas", value=control_wards, inline=True)
-    embedVar.add_field(name="Runa Primária", value=rune, inline=True)
-    embedVar.add_field(name="Dano a estruturas", value=dano_estruturas, inline=True)
-    embedVar.add_field(name="Resultado", value=final, inline=True)
-    embedVar.add_field(name="Última partida jogada", value=ultima_atualizacao, inline=True)
-    embedVar.set_thumbnail(
-        url="https://opgg-static.akamaized.net/images/profile_icons/profileIcon" + str(me['profileIconId']) + ".jpg")
-
-    return embedVar
-
-
 def get_rune_name(rune_name):
     url = "http://ddragon.leagueoflegends.com/cdn/12.16.1/data/en_US/runesReforged.json"
     response = requests.get(url)
@@ -603,17 +582,11 @@ def get_rune_name(rune_name):
                    description="Retorna algumas informações do perfil da pessoa e da última partida jogada.")
 async def perfil(ctx, *, nick: str):
     await ctx.response.defer()
-
     global derrotas, vitorias, kills, deaths, assists, pings, drags, pick, lane, dano, killingspree, visao, red, green, rank, tier, final_bool, winrate, pdl, queue_name, farm, barons, \
         final, ultima_atualizacao, control_wards, rune, dano_estruturas
-
     red = colour.Color.red()
     green = colour.Color.green()
-
-    global me
-    me = getSummonerByName(nick)
-
-    league_info = watcher.league.by_summoner(my_region, me['id'])
+    me, league_info, last_match = get_matches_info(nick)
 
     for thing in league_info:
         if thing['queueType'] == 'RANKED_SOLO_5x5':
@@ -623,8 +596,6 @@ async def perfil(ctx, *, nick: str):
             tier = thing['tier']
             pdl = thing['leaguePoints']
 
-    my_matches = watcher.match.matchlist_by_puuid(my_region, me['puuid'])
-    last_match = watcher.match.by_id(my_region, my_matches[0])
     time_stamp = last_match['info']['gameEndTimestamp']
     ultima_atualizacao = datetime.fromtimestamp(time_stamp / 1000)
 
@@ -662,9 +633,47 @@ async def perfil(ctx, *, nick: str):
     tier = get_translation_stats(tier)
     lane = get_translation_stats(lane)
 
-    embedVar = get_stats_embed(nick)
+    if final_bool:
+        embedVar = disnake.Embed(title="Estatísticas de " + nick, color=green)
+    else:
+        embedVar = disnake.Embed(title="Estatísticas de " + nick, color=red)
+
+    embedVar.add_field(name="Vitórias", value=vitorias, inline=True)
+    embedVar.add_field(name="Derrotas", value=derrotas, inline=True)
+    embedVar.add_field(name="Winrate", value=str(winrate) + "%", inline=True)
+    embedVar.add_field(name=f"{tier} {rank} ({pdl} pdl)", inline=False,
+                       value='=====================')
+    embedVar.add_field(name="Última partida:", value="\u200b", inline=False)
+    embedVar.add_field(name="Kills", value=kills, inline=True)
+    embedVar.add_field(name="Deaths", value=deaths, inline=True)
+    embedVar.add_field(name="Assists", value=assists, inline=True)
+    embedVar.add_field(name="Pings", value=pings, inline=True)
+    embedVar.add_field(name="Dragões", value=drags, inline=True)
+    embedVar.add_field(name="Barons", value=barons, inline=True)
+    embedVar.add_field(name="Pick", value=pick, inline=True)
+    embedVar.add_field(name="Lane", value=lane, inline=True)
+    embedVar.add_field(name="Dano", value=dano, inline=True)
+    embedVar.add_field(name="Killing spree", value=killingspree, inline=True)
+    embedVar.add_field(name="Tipo da fila", value=queue_name, inline=True)
+    embedVar.add_field(name="Farm", value=farm, inline=True)
+    embedVar.add_field(name="Visão", value=visao, inline=True)
+    embedVar.add_field(name="Wards compradas", value=control_wards, inline=True)
+    embedVar.add_field(name="Runa Primária", value=rune, inline=True)
+    embedVar.add_field(name="Dano a estruturas", value=dano_estruturas, inline=True)
+    embedVar.add_field(name="Resultado", value=final, inline=True)
+    embedVar.add_field(name="Última partida jogada", value=ultima_atualizacao, inline=True)
+    embedVar.set_thumbnail(
+        url="https://opgg-static.akamaized.net/images/profile_icons/profileIcon" + str(me['profileIconId']) + ".jpg")
 
     await ctx.send(embed=embedVar)
+
+
+def get_matches_info(nick):
+    me = getSummonerByName(nick)
+    league_info = watcher.league.by_summoner(my_region, me['id'])
+    my_matches = watcher.match.matchlist_by_puuid(my_region, me['puuid'])
+    last_match = watcher.match.by_id(my_region, my_matches[0])
+    return me, league_info, last_match
 
 
 @perfil.error

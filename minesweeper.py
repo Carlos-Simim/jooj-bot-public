@@ -2,10 +2,8 @@ import disnake
 from disnake.ext import commands
 import random
 
-errortxt = ('O comando não foi formatado corretamente ou números inválidos foram utilizados, ',
-            'o formato correto é:\n`!campominado <colunas> <linhas> <bombas>`\n\n',
-            'Você pode não informar nada para receber um jogo aleatório.')
-errortxt = ''.join(errortxt)
+errortxt = 'O comando não foi formatado corretamente ou números inválidos foram utilizados, ' \
+           'você pode não informar nada para receber um jogo aleatório.'
 
 
 class minesweeper(commands.Cog):
