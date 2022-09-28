@@ -31,7 +31,7 @@ github_token = testing.GITHUB_TOKEN
 currency_api = testing.CURRENCY_API
 stock_api = testing.STOCK_API
 testing_server_id = int(testing.TESTING_SERVER)
-version = "167"
+version = "v170"
 
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
@@ -42,6 +42,11 @@ bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True,
 watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
 my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
+sim = 0
+nao = 0
+voters = []
+votacao_ativa = False
+criador_votacao = None
 # TODO Criar comando de polls
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
@@ -64,6 +69,64 @@ async def on_ready():
     send_last_commits.start()
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+
+
+@bot.slash_command(name="enquete", description="Cria uma enquete com uma pergunta de sua escolha.")
+async def polls(ctx, *, question):
+    global votacao_ativa, criador_votacao
+    channel = ctx.channel
+    if votacao_ativa:
+        await ctx.response.send_message("Já existe uma votação em andamento.", ephemeral=True)
+        return
+
+    embed = disnake.Embed(title=question, color=0x00ff00)
+    votacao_ativa = True
+    criador_votacao = ctx.author
+    await channel.send(embed=embed,
+                   components=[disnake.ui.ActionRow(disnake.ui.Button(label="Sim", style=disnake.ButtonStyle.green),
+                                                    disnake.ui.Button(label="Não", style=disnake.ButtonStyle.red),
+                                                    disnake.ui.Button(label="Encerrar", style=disnake.ButtonStyle.grey))])
+
+    await ctx.response.send_message("Votação criada com sucesso! Não esqueça ela aberta :thumbsup:", ephemeral=True)
+
+
+@bot.event
+async def on_button_click(interaction):
+    global voters, criador_votacao, votacao_ativa, sim, nao
+    if interaction.user.id in voters and interaction.component.label != "Encerrar":
+        await interaction.response.send_message("Você já votou, aguarde o resultado!", ephemeral=True)
+        return
+    else:
+        voters.append(interaction.user.id)
+    if interaction.component.label == "Sim":
+        sim += 1
+        await interaction.response.send_message("Voto computado", ephemeral=True)
+    elif interaction.component.label == "Não":
+        nao += 1
+        await interaction.response.send_message("Voto computado", ephemeral=True)
+    elif interaction.component.label == "Encerrar" and (interaction.user.id == criador_votacao.id or interaction.user.id == int(dono_id)):
+        await interaction.message.edit(components=[])
+        embed = disnake.Embed(title=f"{interaction.message.embeds[0].title} (Finalizada)")
+        embed.add_field(name="Sim", value=sim, inline=True)
+        embed.add_field(name="Não", value=nao, inline=True)
+        await interaction.message.edit(embed=embed)
+        votacao_ativa = False
+        criador_votacao = None
+        voters = []
+        sim = 0
+        nao = 0
+        return
+    else:
+        await interaction.response.send_message("Você não pode encerrar a votação!", ephemeral=True)
+        return
+
+    embed = interaction.message.embeds[0]
+    for i in range(len(embed.fields)):
+        embed.remove_field(0)
+
+    embed.add_field(name="Sim", value=sim, inline=True)
+    embed.add_field(name="Não", value=nao, inline=True)
+    await interaction.message.edit(embed=embed)
 
 
 @bot.slash_command(name="ipo", description="Mostra os próximos IPOs de empresas. (Initial Public Offering)")
@@ -107,6 +170,7 @@ async def romano(ctx, number):
 
 @romano.error
 async def romano_error(ctx, error):
+    print(error)
     await ctx.send("Um erro desconhecido ocorreu no comando. O erro foi reportado ao dono do bot")
     await dono.send(f"Um erro desconhecido ccorreu no comando:\n{error}")
 
