@@ -43,7 +43,8 @@ watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
 my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
 votacoes_ativas = []
-# TODO Arrumar a limitação de poder criar apenas uma votação bot-wide, pra poder criar uma votação em cada servidor
+# TODO Analisar a possibilidade de armazenar as votacoes ativas em um arquivo .pickle, pra elas não serem perdidas com o reset diário automático do bot
+# TODO Analistar a possibilidade de adicionar uma opção de timer pra votações, pra que elas sejam encerradas automaticamente após um tempo determinado
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
     'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
@@ -77,7 +78,7 @@ async def on_ready():
 
 
 @bot.slash_command(name="enquete", description="Cria uma enquete com uma pergunta de sua escolha.")
-async def polls(ctx, *, pergunta):
+async def enquete(ctx, *, pergunta):
     global votacoes_ativas
     channel = ctx.channel
 
@@ -99,45 +100,50 @@ async def polls(ctx, *, pergunta):
 
 @bot.event
 async def on_button_click(interaction):
-
-    for votacao in votacoes_ativas:
-        if interaction.user.id in votacao.voters and interaction.component.label != "Encerrar" and votacao.guild_id == interaction.guild.id:
-            await interaction.response.send_message("Você já votou nesta enquete!", ephemeral=True)
-            return
-
-    for votacao in votacoes_ativas:
-        if votacao.guild_id == interaction.guild.id:
-            votacao.voters.append(interaction.user.id)
-            sim = votacao.sim
-            nao = votacao.nao
-            if interaction.component.label == "Sim":
-                votacao.sim += 1
-                await interaction.response.send_message("Voto computado", ephemeral=True)
-            elif interaction.component.label == "Não":
-                votacao.nao += 1
-                await interaction.response.send_message("Voto computado", ephemeral=True)
-            elif interaction.component.label == "Encerrar" and (
-                    interaction.user.id == votacao.criador or interaction.user.id == int(dono_id)):
-                votacoes_ativas.remove(votacao)
-                await interaction.message.edit(components=[])
-                embed = disnake.Embed(title=f"{interaction.message.embeds[0].title} (Finalizada)")
-                embed.add_field(name="Sim", value=sim, inline=True)
-                embed.add_field(name="Não", value=nao, inline=True)
-                await interaction.message.edit(embed=embed)
+    try:
+        for votacao in votacoes_ativas:
+            if interaction.user.id in votacao.voters and interaction.component.label != "Encerrar" and votacao.guild_id == interaction.guild.id:
+                await interaction.response.send_message("Você já votou nesta enquete!", ephemeral=True)
                 return
-            else:
-                await interaction.response.send_message("Você não pode encerrar a votação!", ephemeral=True)
-                return
-            sim = votacao.sim
-            nao = votacao.nao
 
-    embed = interaction.message.embeds[0]
-    for i in range(len(embed.fields)):
-        embed.remove_field(0)
+        for votacao in votacoes_ativas:
+            if votacao.guild_id == interaction.guild.id:
+                votacao.voters.append(interaction.user.id)
+                sim = votacao.sim
+                nao = votacao.nao
+                if interaction.component.label == "Sim":
+                    votacao.sim += 1
+                    await interaction.response.send_message("Voto computado", ephemeral=True)
+                elif interaction.component.label == "Não":
+                    votacao.nao += 1
+                    await interaction.response.send_message("Voto computado", ephemeral=True)
+                elif interaction.component.label == "Encerrar" and (
+                        interaction.user.id == votacao.criador or interaction.user.id == int(dono_id)):
+                    votacoes_ativas.remove(votacao)
+                    await interaction.message.edit(components=[])
+                    embed = disnake.Embed(title=f"{interaction.message.embeds[0].title} (Finalizada)")
+                    embed.add_field(name="Sim", value=sim, inline=True)
+                    embed.add_field(name="Não", value=nao, inline=True)
+                    await interaction.message.edit(embed=embed)
+                    return
+                else:
+                    await interaction.response.send_message("Você não pode encerrar a votação!", ephemeral=True)
+                    return
+                sim = votacao.sim
+                nao = votacao.nao
 
-    embed.add_field(name="Sim", value=sim, inline=True)
-    embed.add_field(name="Não", value=nao, inline=True)
-    await interaction.message.edit(embed=embed)
+        embed = interaction.message.embeds[0]
+        for i in range(len(embed.fields)):
+            embed.remove_field(0)
+
+        embed.add_field(name="Sim", value=sim, inline=True)
+        embed.add_field(name="Não", value=nao, inline=True)
+        await interaction.message.edit(embed=embed)
+    except Exception as e:
+        await interaction.response.send_message(
+            "Ocorreu um erro ao computar seu comando! O erro foi enviado ao desenvolvedor, caso persista no futuro "
+            "basta entrar em contato diretamente: Vergil#3489", ephemeral=True)
+        await dono.send(e)
 
 
 @bot.slash_command(name="ipo", description="Mostra os próximos IPOs de empresas. (Initial Public Offering)")
