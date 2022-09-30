@@ -14,24 +14,13 @@ from disnake.ext import commands, tasks
 from github import Github
 from riotwatcher import LolWatcher
 
-lol_api = os.environ['LOL_API']
-token = os.environ['BOT_TOKEN']
-cat_api = os.environ['CAT_API']
-github_token = os.environ['GITHUB_TOKEN']
-currency_api = os.environ['CURRENCY_API']
-stock_api = os.environ['STOCK_API']
-version = os.environ['HEROKU_RELEASE_VERSION']
-
-# import testing
-# 
-# lol_api = testing.LOL_API
-# token = testing.BOT_TOKEN
-# cat_api = testing.CAT_API
-# github_token = testing.GITHUB_TOKEN
-# currency_api = testing.CURRENCY_API
-# stock_api = testing.STOCK_API
-# testing_server_id = int(testing.TESTING_SERVER)
-# version = "v171"
+lol_api = os.getenv('LOL_API')
+token = os.getenv('BOT_TOKEN')
+cat_api = os.getenv('CAT_API')
+github_token = os.getenv('GITHUB_TOKEN')
+currency_api = os.getenv('CURRENCY_API')
+stock_api = os.getenv('STOCK_API')
+version = os.getenv('HEROKU_RELEASE_VERSION')
 
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
@@ -43,8 +32,6 @@ watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
 my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
 votacoes_ativas = []
-# TODO Analisar a possibilidade de armazenar as votacoes ativas em um arquivo .pickle, pra elas não serem perdidas com o reset diário automático do bot
-# TODO Analisar a possibilidade de adicionar uma opção de timer pra votações, pra que elas sejam encerradas automaticamente após um tempo determinado
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
     'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
