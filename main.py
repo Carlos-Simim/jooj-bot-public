@@ -73,9 +73,9 @@ async def enquete(ctx, *, pergunta=None):
     global votacoes_ativas
     channel = ctx.channel
 
-    if pergunta is None:
-        for votacao in votacoes_ativas:
-            if votacao.guild_id == ctx.guild.id:
+    for votacao in votacoes_ativas:
+        if votacao.guild_id == ctx.guild.id:
+            if pergunta is None:
                 try:
                     mensagem = await channel.fetch_message(votacao.mensagem_id)
                     await mensagem.delete()
@@ -85,18 +85,26 @@ async def enquete(ctx, *, pergunta=None):
                 embed.add_field(name="Sim", value=votacao.sim, inline=True)
                 embed.add_field(name="Não", value=votacao.nao, inline=True)
                 await ctx.response.send_message("Enquete ativa enviada abaixo", ephemeral=True)
-                await channel.send(embed=embed,
-                                   components=[disnake.ui.ActionRow(
-                                       disnake.ui.Button(label="Sim", style=disnake.ButtonStyle.green),
-                                       disnake.ui.Button(label="Não", style=disnake.ButtonStyle.red),
-                                       disnake.ui.Button(label="Encerrar",
-                                                         style=disnake.ButtonStyle.grey))])
+                nova_mensagem = await channel.send(embed=embed,
+                                                   components=[disnake.ui.ActionRow(
+                                                       disnake.ui.Button(label="Sim", style=disnake.ButtonStyle.green),
+                                                       disnake.ui.Button(label="Não", style=disnake.ButtonStyle.red),
+                                                       disnake.ui.Button(label="Encerrar",
+                                                                         style=disnake.ButtonStyle.grey))])
+                votacao.mensagem_id = nova_mensagem.id
+                pickle_enquetes()
                 return
+            else:
+                await ctx.response.send_message("Já existe uma enquete ativa neste servidor", ephemeral=True)
+                return
+    if pergunta is None:
         await ctx.send(
             "Não há nenhuma enquete ativa neste servidor. Crie uma adicionando uma pergunta no comando /enquete.")
         return
 
     embed = disnake.Embed(title=pergunta, color=0x00ff00)
+    embed.add_field(name="Sim", value=0, inline=True)
+    embed.add_field(name="Não", value=0, inline=True)
     mensagem = await channel.send(embed=embed,
                                   components=[disnake.ui.ActionRow(
                                       disnake.ui.Button(label="Sim", style=disnake.ButtonStyle.green),
