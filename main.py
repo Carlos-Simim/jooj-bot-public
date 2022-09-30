@@ -1,9 +1,9 @@
 import csv
-import os
 import time
-
+import pickle
 import disnake
 import random
+import os
 import requests
 
 from datetime import datetime, timedelta
@@ -14,24 +14,23 @@ from disnake.ext import commands, tasks
 from github import Github
 from riotwatcher import LolWatcher
 
-# lol_api = os.environ['LOL_API']
-# token = os.environ['BOT_TOKEN']
-# cat_api = os.environ['CAT_API']
-# github_token = os.environ['GITHUB_TOKEN']
-# currency_api = os.environ['CURRENCY_API']
-# stock_api = os.environ['STOCK_API']
-# version = os.environ['HEROKU_RELEASE_VERSION']
+lol_api = os.environ['LOL_API']
+token = os.environ['BOT_TOKEN']
+cat_api = os.environ['CAT_API']
+github_token = os.environ['GITHUB_TOKEN']
+currency_api = os.environ['CURRENCY_API']
+stock_api = os.environ['STOCK_API']
+version = os.environ['HEROKU_RELEASE_VERSION']
 
-import testing
-
-lol_api = testing.LOL_API
-token = testing.BOT_TOKEN
-cat_api = testing.CAT_API
-github_token = testing.GITHUB_TOKEN
-currency_api = testing.CURRENCY_API
-stock_api = testing.STOCK_API
-testing_server_id = int(testing.TESTING_SERVER)
-version = "v171"
+# import testing
+# lol_api = testing.LOL_API
+# token = testing.BOT_TOKEN
+# cat_api = testing.CAT_API
+# github_token = testing.GITHUB_TOKEN
+# currency_api = testing.CURRENCY_API
+# stock_api = testing.STOCK_API
+# testing_server_id = int(testing.TESTING_SERVER)
+# version = "v171"
 
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
@@ -44,7 +43,7 @@ my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
 votacoes_ativas = []
 # TODO Analisar a possibilidade de armazenar as votacoes ativas em um arquivo .pickle, pra elas não serem perdidas com o reset diário automático do bot
-# TODO Analistar a possibilidade de adicionar uma opção de timer pra votações, pra que elas sejam encerradas automaticamente após um tempo determinado
+# TODO Analisar a possibilidade de adicionar uma opção de timer pra votações, pra que elas sejam encerradas automaticamente após um tempo determinado
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
     'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
@@ -59,12 +58,14 @@ morse_code = {
 
 
 class Enquete:
-    def __init__(self, guild_id, criador):
+    def __init__(self, guild_id, criador, mensagem_id):
         self.guild_id = guild_id
         self.sim = 0
         self.nao = 0
         self.voters = []
         self.criador = criador
+        self.mensagem_id = mensagem_id
+        self.start_time = datetime.now()
 
 
 @bot.event  # evento de quando o bot estiver pronto
@@ -75,6 +76,7 @@ async def on_ready():
     send_last_commits.start()
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    unpickle_enquetes()
 
 
 @bot.slash_command(name="enquete", description="Cria uma enquete com uma pergunta de sua escolha.")
@@ -87,13 +89,15 @@ async def enquete(ctx, *, pergunta):
             await ctx.send("Já existe uma votação ativa neste servidor.")
             return
 
-    votacoes_ativas.append(Enquete(ctx.guild.id, ctx.author.id))
     embed = disnake.Embed(title=pergunta, color=0x00ff00)
-    await channel.send(embed=embed,
-                       components=[disnake.ui.ActionRow(disnake.ui.Button(label="Sim", style=disnake.ButtonStyle.green),
-                                                        disnake.ui.Button(label="Não", style=disnake.ButtonStyle.red),
-                                                        disnake.ui.Button(label="Encerrar",
-                                                                          style=disnake.ButtonStyle.grey))])
+    mensagem = await channel.send(embed=embed,
+                                  components=[disnake.ui.ActionRow(
+                                      disnake.ui.Button(label="Sim", style=disnake.ButtonStyle.green),
+                                      disnake.ui.Button(label="Não", style=disnake.ButtonStyle.red),
+                                      disnake.ui.Button(label="Encerrar",
+                                                        style=disnake.ButtonStyle.grey))])
+    votacoes_ativas.append(Enquete(ctx.guild.id, ctx.author.id, mensagem.id))
+    pickle_enquetes()
 
     await ctx.response.send_message("Votação criada com sucesso! Não esqueça ela aberta :thumbsup:", ephemeral=True)
 
@@ -124,13 +128,17 @@ async def on_button_click(interaction):
                     embed = disnake.Embed(title=f"{interaction.message.embeds[0].title} (Finalizada)")
                     embed.add_field(name="Sim", value=sim, inline=True)
                     embed.add_field(name="Não", value=nao, inline=True)
+                    time_var = datetime.now() - votacao.start_time
+                    embed.set_footer(text=f"Tempo de votação: {strfdelta(time_var, '{hours}h {minutes}m {seconds}s')}")
                     await interaction.message.edit(embed=embed)
+                    pickle_enquetes()
                     return
                 else:
                     await interaction.response.send_message("Você não pode encerrar a votação!", ephemeral=True)
                     return
                 sim = votacao.sim
                 nao = votacao.nao
+                pickle_enquetes()
 
         embed = interaction.message.embeds[0]
         for i in range(len(embed.fields)):
@@ -143,7 +151,26 @@ async def on_button_click(interaction):
         await interaction.response.send_message(
             "Ocorreu um erro ao computar seu comando! O erro foi enviado ao desenvolvedor, caso persista no futuro "
             "basta entrar em contato diretamente: Vergil#3489", ephemeral=True)
+        print(e)
         await dono.send(e)
+
+
+def pickle_enquetes():
+    with open("enquetes.pickle", "wb") as f:
+        pickle.dump(votacoes_ativas, f)
+
+
+def unpickle_enquetes():
+    global votacoes_ativas
+    with open("enquetes.pickle", "rb") as f:
+        votacoes_ativas = pickle.load(f)
+
+
+def strfdelta(tdelta, fmt):
+    d = {"days": tdelta.days}
+    d["hours"], rem = divmod(tdelta.seconds, 3600)
+    d["minutes"], d["seconds"] = divmod(rem, 60)
+    return fmt.format(**d)
 
 
 @bot.slash_command(name="ipo", description="Mostra os próximos IPOs de empresas. (Initial Public Offering)")
