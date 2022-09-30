@@ -23,6 +23,7 @@ stock_api = os.environ['STOCK_API']
 version = os.environ['HEROKU_RELEASE_VERSION']
 
 # import testing
+# 
 # lol_api = testing.LOL_API
 # token = testing.BOT_TOKEN
 # cat_api = testing.CAT_API
@@ -58,12 +59,13 @@ morse_code = {
 
 
 class Enquete:
-    def __init__(self, guild_id, criador, mensagem_id):
+    def __init__(self, guild_id, criador, pergunta, mensagem_id):
         self.guild_id = guild_id
         self.sim = 0
         self.nao = 0
         self.voters = []
         self.criador = criador
+        self.pergunta = pergunta
         self.mensagem_id = mensagem_id
         self.start_time = datetime.now()
 
@@ -80,14 +82,32 @@ async def on_ready():
 
 
 @bot.slash_command(name="enquete", description="Cria uma enquete com uma pergunta de sua escolha.")
-async def enquete(ctx, *, pergunta):
+async def enquete(ctx, *, pergunta=None):
     global votacoes_ativas
     channel = ctx.channel
 
-    for votacao in votacoes_ativas:
-        if votacao.guild_id == ctx.guild.id:
-            await ctx.send("Já existe uma votação ativa neste servidor.")
-            return
+    if pergunta is None:
+        for votacao in votacoes_ativas:
+            if votacao.guild_id == ctx.guild.id:
+                try:
+                    mensagem = await channel.fetch_message(votacao.mensagem_id)
+                    await mensagem.delete()
+                except:
+                    pass
+                embed = disnake.Embed(title=votacao.pergunta, color=0x00ff00)
+                embed.add_field(name="Sim", value=votacao.sim, inline=True)
+                embed.add_field(name="Não", value=votacao.nao, inline=True)
+                await ctx.response.send_message("Enquete ativa enviada abaixo", ephemeral=True)
+                await channel.send(embed=embed,
+                                   components=[disnake.ui.ActionRow(
+                                       disnake.ui.Button(label="Sim", style=disnake.ButtonStyle.green),
+                                       disnake.ui.Button(label="Não", style=disnake.ButtonStyle.red),
+                                       disnake.ui.Button(label="Encerrar",
+                                                         style=disnake.ButtonStyle.grey))])
+                return
+        await ctx.send(
+            "Não há nenhuma enquete ativa neste servidor. Crie uma adicionando uma pergunta no comando /enquete.")
+        return
 
     embed = disnake.Embed(title=pergunta, color=0x00ff00)
     mensagem = await channel.send(embed=embed,
@@ -96,7 +116,7 @@ async def enquete(ctx, *, pergunta):
                                       disnake.ui.Button(label="Não", style=disnake.ButtonStyle.red),
                                       disnake.ui.Button(label="Encerrar",
                                                         style=disnake.ButtonStyle.grey))])
-    votacoes_ativas.append(Enquete(ctx.guild.id, ctx.author.id, mensagem.id))
+    votacoes_ativas.append(Enquete(ctx.guild.id, ctx.author.id, pergunta, mensagem.id))
     pickle_enquetes()
 
     await ctx.response.send_message("Votação criada com sucesso! Não esqueça ela aberta :thumbsup:", ephemeral=True)
