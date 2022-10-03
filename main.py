@@ -1,6 +1,7 @@
 import csv
 import time
-import pickle
+from uuid import uuid4
+
 import disnake
 import random
 import os
@@ -35,6 +36,7 @@ watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
 my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
 votacoes_ativas = []
+my_database = psycopg2.connect(heroku_database, sslmode='require')
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
     'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
@@ -58,6 +60,7 @@ class Enquete:
         self.pergunta = pergunta
         self.mensagem_id = mensagem_id
         self.start_time = datetime.now()
+        self.enquete_id = uuid4()
 
 
 @bot.event  # evento de quando o bot estiver pronto
@@ -68,9 +71,60 @@ async def on_ready():
     send_last_commits.start()
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-    unpickle_enquetes()
-    conn = psycopg2.connect(heroku_database, sslmode='require')
-    print("BD conectado")
+    cursor = my_database.cursor()
+    cursor.execute("SELECT * FROM public.\"Enquetes\"")
+    for row in cursor.fetchall():
+        enquete = Enquete(row[1], row[5], row[6], row[7])
+        enquete.sim = row[3]
+        enquete.nao = row[4]
+        enquete.enquete_id = row[0]
+        votacoes_ativas.append(enquete)
+    cursor.close()
+
+
+def inserir_enquete(ctx):
+    cursor = my_database.cursor()
+    for enquete in votacoes_ativas:
+        if enquete.guild_id == ctx.guild.id:
+            query = f"INSERT INTO public.\"Enquetes\" (enquete_id, guild_id, sim, nao, criador, pergunta, mensagem_id) VALUES (\'{enquete.enquete_id}\', {enquete.guild_id}, {enquete.sim}, {enquete.nao}, {enquete.criador}, \'{enquete.pergunta}\', {enquete.mensagem_id})"
+            print(query)
+            cursor.execute(query)
+    my_database.commit()
+    cursor.close()
+
+
+def inserir_voters(votacao):
+    cursor = my_database.cursor()
+    for voter in votacao.voters:
+        query = f"INSERT INTO public.\"Voters\" (enquete_id, user_id) VALUES (\'{votacao.enquete_id}\', {voter})"
+        print(query)
+        cursor.execute(query)
+    query = f'UPDATE public.\"Enquetes\" SET sim={votacao.sim}, nao={votacao.nao} WHERE enquete_id=\'{votacao.enquete_id}\''
+    print(query)
+    cursor.execute(query)
+    my_database.commit()
+    cursor.close()
+
+
+def atualizar_mensagem(votacao):
+    cursos = my_database.cursor()
+    query = f'UPDATE public.\"Enquetes\" SET mensagem_id={votacao.mensagem_id} WHERE enquete_id=\'{votacao.enquete_id}\''
+    print(query)
+    cursos.execute(query)
+    my_database.commit()
+    cursos.close()
+
+
+def remover_enquete(votacao):
+    cursor = my_database.cursor()
+    query = f'DELETE FROM public.\"Enquetes\" WHERE enquete_id=\'{votacao.enquete_id}\''
+    print(query)
+    cursor.execute(query)
+    query = f'DELETE FROM public.\"Voters\" WHERE enquete_id=\'{votacao.enquete_id}\''
+    print(query)
+    cursor.execute(query)
+    my_database.commit()
+    cursor.close()
 
 
 @bot.slash_command(name="enquete", description="Cria uma enquete com uma pergunta de sua escolha.")
@@ -97,7 +151,7 @@ async def enquete(ctx, *, pergunta=None):
                                                        disnake.ui.Button(label="Encerrar",
                                                                          style=disnake.ButtonStyle.grey))])
                 votacao.mensagem_id = nova_mensagem.id
-                pickle_enquetes()
+                atualizar_mensagem(votacao)
                 return
             else:
                 await ctx.response.send_message("Já existe uma enquete ativa neste servidor", ephemeral=True)
@@ -117,7 +171,7 @@ async def enquete(ctx, *, pergunta=None):
                                       disnake.ui.Button(label="Encerrar",
                                                         style=disnake.ButtonStyle.grey))])
     votacoes_ativas.append(Enquete(ctx.guild.id, ctx.author.id, pergunta, mensagem.id))
-    pickle_enquetes()
+    inserir_enquete(ctx)
 
     await ctx.response.send_message("Votação criada com sucesso! Não esqueça ela aberta :thumbsup:", ephemeral=True)
 
@@ -151,14 +205,14 @@ async def on_button_click(interaction):
                     time_var = datetime.now() - votacao.start_time
                     embed.set_footer(text=f"Tempo de votação: {strfdelta(time_var, '{hours}h {minutes}m {seconds}s')}")
                     await interaction.message.edit(embed=embed)
-                    pickle_enquetes()
+                    remover_enquete(votacao)
                     return
                 else:
                     await interaction.response.send_message("Você não pode encerrar a votação!", ephemeral=True)
                     return
                 sim = votacao.sim
                 nao = votacao.nao
-                pickle_enquetes()
+                inserir_voters(votacao)
 
         embed = interaction.message.embeds[0]
         for i in range(len(embed.fields)):
@@ -173,17 +227,6 @@ async def on_button_click(interaction):
             "basta entrar em contato diretamente: Vergil#3489", ephemeral=True)
         print(e)
         await dono.send(e)
-
-
-def pickle_enquetes():
-    with open("enquetes.pickle", "wb") as f:
-        pickle.dump(votacoes_ativas, f)
-
-
-def unpickle_enquetes():
-    global votacoes_ativas
-    with open("enquetes.pickle", "rb") as f:
-        votacoes_ativas = pickle.load(f)
 
 
 def strfdelta(tdelta, fmt):
