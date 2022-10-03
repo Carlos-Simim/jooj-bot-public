@@ -4,6 +4,8 @@ import pickle
 import disnake
 import random
 import os
+
+import psycopg2
 import requests
 
 from datetime import datetime, timedelta
@@ -21,6 +23,7 @@ github_token = os.getenv('GITHUB_TOKEN')
 currency_api = os.getenv('CURRENCY_API')
 stock_api = os.getenv('STOCK_API')
 version = os.getenv('HEROKU_RELEASE_VERSION')
+heroku_database = os.getenv('DATABASE_URL')
 
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
@@ -66,6 +69,8 @@ async def on_ready():
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     unpickle_enquetes()
+    conn = psycopg2.connect(heroku_database, sslmode='require')
+    print("BD conectado")
 
 
 @bot.slash_command(name="enquete", description="Cria uma enquete com uma pergunta de sua escolha.")
