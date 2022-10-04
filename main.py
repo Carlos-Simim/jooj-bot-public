@@ -72,13 +72,18 @@ async def on_ready():
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     cursor = my_database.cursor()
+    cursor2 = my_database.cursor()
     cursor.execute("SELECT * FROM public.\"Enquetes\"")
     for row in cursor.fetchall():
-        enquete = Enquete(row[1], row[5], row[6], row[7])
-        enquete.sim = row[3]
-        enquete.nao = row[4]
-        enquete.enquete_id = row[0]
+        enquete = Enquete(row[0], row[3], row[4], row[5]) # TODO arrumar isso
+        enquete.sim = row[1]
+        enquete.nao = row[2]
+        enquete.enquete_id = row[6]
         votacoes_ativas.append(enquete)
+        cursor2.execute(f"SELECT * FROM public.\"Voters\" WHERE enquete_id=\'{enquete.enquete_id}\'")
+        for row2 in cursor2.fetchall():
+            enquete.voters.append(row2[0])
+    cursor2.close()
     cursor.close()
 
 
@@ -95,10 +100,18 @@ def inserir_enquete(ctx):
 
 def inserir_voters(votacao):
     cursor = my_database.cursor()
+    cursor2 = my_database.cursor()
+    cursor2.execute(f"SELECT * FROM public.\"Voters\" WHERE enquete_id=\'{votacao.enquete_id}\'")
+    voters_temp = []
+    for row in cursor2.fetchall():
+        voters_temp.append(row[0])
+    cursor2.close()
+
     for voter in votacao.voters:
-        query = f"INSERT INTO public.\"Voters\" (enquete_id, user_id) VALUES (\'{votacao.enquete_id}\', {voter})"
-        print(query)
-        cursor.execute(query)
+        if voter not in voters_temp:
+            query = f"INSERT INTO public.\"Voters\" (enquete_id, user_id) VALUES (\'{votacao.enquete_id}\', {voter})"
+            print(query)
+            cursor.execute(query)
     query = f'UPDATE public.\"Enquetes\" SET sim={votacao.sim}, nao={votacao.nao} WHERE enquete_id=\'{votacao.enquete_id}\''
     print(query)
     cursor.execute(query)
@@ -133,7 +146,7 @@ async def enquete(ctx, *, pergunta=None):
     channel = ctx.channel
 
     for votacao in votacoes_ativas:
-        if votacao.guild_id == ctx.guild.id:
+        if votacao.guild_id == str(ctx.guild.id):
             if pergunta is None:
                 try:
                     mensagem = await channel.fetch_message(votacao.mensagem_id)
@@ -180,13 +193,13 @@ async def enquete(ctx, *, pergunta=None):
 async def on_button_click(interaction):
     try:
         for votacao in votacoes_ativas:
-            if interaction.user.id in votacao.voters and interaction.component.label != "Encerrar" and votacao.guild_id == interaction.guild.id:
+            if str(interaction.user.id) in votacao.voters and interaction.component.label != "Encerrar" and int(votacao.guild_id) == interaction.guild.id:
                 await interaction.response.send_message("Você já votou nesta enquete!", ephemeral=True)
                 return
 
         for votacao in votacoes_ativas:
-            if votacao.guild_id == interaction.guild.id:
-                votacao.voters.append(interaction.user.id)
+            if int(votacao.guild_id) == interaction.guild.id:
+                votacao.voters.append(str(interaction.user.id))
                 sim = votacao.sim
                 nao = votacao.nao
                 if interaction.component.label == "Sim":
@@ -196,7 +209,7 @@ async def on_button_click(interaction):
                     votacao.nao += 1
                     await interaction.response.send_message("Voto computado", ephemeral=True)
                 elif interaction.component.label == "Encerrar" and (
-                        interaction.user.id == votacao.criador or interaction.user.id == int(dono_id)):
+                        interaction.user.id == int(votacao.criador) or interaction.user.id == int(dono_id)):
                     votacoes_ativas.remove(votacao)
                     await interaction.message.edit(components=[])
                     embed = disnake.Embed(title=f"{interaction.message.embeds[0].title} (Finalizada)")
