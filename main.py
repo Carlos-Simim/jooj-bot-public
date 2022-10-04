@@ -1,21 +1,18 @@
 import csv
 import time
-from uuid import uuid4
-
+import roman
 import disnake
 import random
 import os
-
 import psycopg2
 import requests
 
 from datetime import datetime, timedelta
-
-import roman
 from disnake import colour
 from disnake.ext import commands, tasks
 from github import Github
 from riotwatcher import LolWatcher
+from uuid import uuid4
 
 lol_api = os.getenv('LOL_API')
 token = os.getenv('BOT_TOKEN')
@@ -65,17 +62,19 @@ class Enquete:
 
 @bot.event  # evento de quando o bot estiver pronto
 async def on_ready():
+    # Bot iniciando
     global dono
     dono = await bot.fetch_user(dono_id)
     random_status.start()
     send_last_commits.start()
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    # Leitura de dados do banco de dados
     cursor = my_database.cursor()
     cursor2 = my_database.cursor()
     cursor.execute("SELECT * FROM public.\"Enquetes\"")
     for row in cursor.fetchall():
-        enquete = Enquete(row[0], row[3], row[4], row[5]) # TODO arrumar isso
+        enquete = Enquete(row[0], row[3], row[4], row[5])  # TODO arrumar isso
         enquete.sim = row[1]
         enquete.nao = row[2]
         enquete.enquete_id = row[6]
@@ -103,6 +102,7 @@ def inserir_voters(votacao):
     cursor2 = my_database.cursor()
     cursor2.execute(f"SELECT * FROM public.\"Voters\" WHERE enquete_id=\'{votacao.enquete_id}\'")
     voters_temp = []
+    # Lista com os voters já existentes do banco de dados. Para verificar se existe a necessidade de adicionar um novo voter para aquela votação no banco de dados
     for row in cursor2.fetchall():
         voters_temp.append(row[0])
     cursor2.close()
@@ -193,7 +193,8 @@ async def enquete(ctx, *, pergunta=None):
 async def on_button_click(interaction):
     try:
         for votacao in votacoes_ativas:
-            if str(interaction.user.id) in votacao.voters and interaction.component.label != "Encerrar" and int(votacao.guild_id) == interaction.guild.id:
+            if str(interaction.user.id) in votacao.voters and interaction.component.label != "Encerrar" and int(
+                    votacao.guild_id) == interaction.guild.id:
                 await interaction.response.send_message("Você já votou nesta enquete!", ephemeral=True)
                 return
 
