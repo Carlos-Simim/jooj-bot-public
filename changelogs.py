@@ -1,7 +1,7 @@
 from main import *
 
 
-def send_last_commits():
+async def send_last_commits():
     channel = bot.get_channel(int(changelogs_channel_id))
     testing_channel = bot.get_channel(int(testing_channel_id))
     print("Checking for new commits...")
@@ -17,6 +17,8 @@ def send_last_commits():
             print("Commits enviados")
             await testing_channel.send(embed=embed)
             await channel.send(embed=embed)
+
+    print("Commits enviados")
 
 
 def get_commits(repository):
