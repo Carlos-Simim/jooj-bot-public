@@ -22,18 +22,19 @@ currency_api = os.getenv('CURRENCY_API')
 stock_api = os.getenv('STOCK_API')
 version = os.getenv('HEROKU_RELEASE_VERSION')
 heroku_database = os.getenv('DATABASE_URL')
-
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
 testing_channel_id = "1019257889967325254"  # id do canal de testes
 intents = disnake.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", help_command=None, case_insensitive=True, intents=intents)
+bot = commands.Bot(help_command=None, case_insensitive=True, intents=intents)
 watcher = LolWatcher(lol_api)  # inicializa o watcher com a api da riot
 my_region = 'br1'  # região do bot
 aka_brasil = ["bostil", "bananil", "chimpanzil", "cupretil", "cachorril"]  # Sinônimos de brasil
 votacoes_ativas = []
 my_database = psycopg2.connect(heroku_database, sslmode='require')
+dono: disnake.User = None
+test_guild = [1007317177520619610]
 morse_code = {
     'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
     'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
@@ -62,7 +63,6 @@ class Enquete:
 
 @bot.event  # evento de quando o bot estiver pronto
 async def on_ready():
-    # Bot iniciando
     global dono
     dono = await bot.fetch_user(dono_id)
     random_status.start()
@@ -74,7 +74,7 @@ async def on_ready():
     cursor2 = my_database.cursor()
     cursor.execute("SELECT * FROM public.\"Enquetes\"")
     for row in cursor.fetchall():
-        enquete = Enquete(row[0], row[3], row[4], row[5])  # TODO arrumar isso
+        enquete = Enquete(row[0], row[3], row[4], row[5])
         enquete.sim = row[1]
         enquete.nao = row[2]
         enquete.enquete_id = row[6]
@@ -276,62 +276,6 @@ def get_ipo_list():
         return my_list
 
 
-@bot.slash_command(name="romano", description="Converte um número para romano e vice-versa")
-async def romano(ctx, number):
-    if number.isdigit():
-        number = int(number)
-        if number > 4999:
-            await ctx.send("O número não pode ser maior que 4999")
-            return
-        else:
-            await ctx.send(f"{number} = {roman.toRoman(number)}")
-    else:
-        await ctx.send(f"{number} = {roman.fromRoman(number)}")
-
-
-@romano.error
-async def romano_error(ctx, error):
-    print(error)
-    await ctx.send("Um erro desconhecido ocorreu no comando. O erro foi reportado ao dono do bot")
-    await dono.send(f"Um erro desconhecido ccorreu no comando:\n{error}")
-
-
-@bot.slash_command(name="morse", description="Traduz um texto para código morse e vice-versa.")
-async def morse(ctx, *, texto):
-    await ctx.send(get_morse_translation(texto))
-
-
-def get_morse_translation(texto):
-    texto = texto.lower()
-    texto_morse = ''
-    texto_normal = ''
-    morse_dicionario: dict = {'.-': 'a', '-...': 'b', '-.-.': 'c', '-..': 'd', '.': 'e', '..-.': 'f', '--.': 'g',
-                              '....': 'h', '..': 'i', '.---': 'j', '-.-': 'k', '.-..': 'l', '--': 'm', '-.': 'n',
-                              '---': 'o', '.--.': 'p', '--.-': 'q', '.-.': 'r', '...': 's', '-': 't', '..-': 'u',
-                              '...-': 'v', '.--': 'w', '-..-': 'x', '-.--': 'y', '--..': 'z', '.----': '1',
-                              '..---': '2', '...--': '3', '....-': '4', '.....': '5', '-....': '6', '--...': '7',
-                              '---..': '8', '----.': '9', '-----': '0', '.-.-.-': '.', '--..--': ',', '..--..': '?',
-                              '.----.': "'", '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')', '.-...': '&',
-                              '---...': ':', '-.-.-.': ';', '-...-': '=', '.-.-.': '+', '-....-': '-', '..--.-': '_',
-                              '.-..-.': '"', '...-..-': '$', '.--.-.': '@', '...---...': 'SOS', '/': ' '}
-    if texto.count('.') == 0 and texto.count('-') == 0:
-        texto = texto.upper()
-        for letra in texto:
-            try:
-                texto_morse += morse_code.get(letra) + ' '
-            except TypeError:
-                texto_morse += letra + ' '
-        return texto_morse
-    else:
-        for letra in texto.split():
-            try:
-                texto_normal += morse_dicionario.get(letra)
-            except TypeError:
-                texto_normal += letra
-        texto_normal = texto_normal.upper()
-        return texto_normal
-
-
 @bot.slash_command(name="acoes",
                    description="Retorna algumas informações sobre uma determinada ação. Exemplo: TSLA, IBM, NIO, etc.")
 async def acoes(ctx, *, acao):
@@ -508,64 +452,6 @@ async def random_status():
         activity=disnake.Activity(type=disnake.ActivityType.watching, name=lista_filmes[random_number]))
 
 
-@bot.slash_command(name="pais", description="Retorna informações sobre um país")
-async def pais(ctx, *, pais: str):
-    await ctx.response.defer()
-
-    if aka_brasil.__contains__(pais.lower()):
-        pais = "Brazil"
-
-    try:
-        info = getPaisInfo(pais)
-    except:
-        await ctx.send("Não consegui encontrar esse país!")
-        return
-
-    embedVar = disnake.Embed(title="Informações de " + pais, color=0x00ff00)
-    embedVar.add_field(name="Capital", value=info.get("capital"), inline=True)
-    embedVar.add_field(name="População", value=str(info.get("populacao")) + " hab.", inline=True)
-    embedVar.add_field(name="Área", value=str(info.get("area")) + "km²", inline=True)
-
-    if info.get("un_member"):
-        embedVar.add_field(name="Membro da ONU", value=":white_check_mark:", inline=True)
-    else:
-        embedVar.add_field(name="Membro da ONU", value=":x:", inline=True)
-
-    embedVar.add_field(name="Continente", value=info.get("continente"), inline=True)
-
-    if not info.get("litoral"):
-        embedVar.add_field(name="Possui Litoral", value=":white_check_mark:", inline=True)
-    else:
-        embedVar.add_field(name="Possui Litoral", value=":x:", inline=True)
-
-    if info.get("lado_transito") == "left":
-        embedVar.add_field(name="Lado do trânsito", value=":leftwards_arrow_with_hook:", inline=True)
-    else:
-        embedVar.add_field(name="Lado do trânsito", value=":arrow_right:", inline=True)
-
-    embedVar.add_field(name="1° Dia da semana", value=info.get("dia_semana"), inline=True)
-    embedVar.add_field(name="Bandeira", value=info.get("bandeira"), inline=True)
-    embedVar.set_thumbnail(url=info.get("brasao_armas"))
-
-    await ctx.send(embed=embedVar)
-
-
-def getPaisInfo(paisVar):
-    url = "https://restcountries.com/v3.1/name/" + paisVar
-    response = requests.get(url)
-    pais = response.json()[0]
-    # pega as informações do país da API e coloca em um dicionário
-    pais_dicionario: dict = {"capital": pais["capital"][0], "populacao": pais["population"], "area": pais["area"],
-                             "mapa": pais["maps"]["googleMaps"], "street_view": pais["maps"]["openStreetMaps"],
-                             "un_member": pais["unMember"],
-                             "continente": get_translation_pais(pais["continents"][0]),
-                             "litoral": pais["landlocked"], "lado_transito": pais["car"]["side"],
-                             "dia_semana": get_translation_pais(pais["startOfWeek"]),
-                             "brasao_armas": pais["coatOfArms"]["png"], "bandeira": pais["flag"]}
-
-    return pais_dicionario
-
-
 @bot.slash_command(name="ping", description="Retorna o ping do bot.")
 async def ping(ctx):
     await ctx.send(f'Latência de: {round(bot.latency * 1000)}ms')
@@ -722,19 +608,6 @@ def get_queue_name(queue_id):
     return queue_name
 
 
-def get_translation_pais(word):
-    pais_traducao_dicionario: dict = {"monday": "Segunda-feira", "tuesday": "Terça-feira", "wednesday": "Quarta-feira",
-                                      "thursday": "Quinta-feira", "friday": "Sexta-feira", "saturday": "Sábado",
-                                      "sunday": "Domingo",
-                                      "South America": "América do Sul", "North America": "América do Norte",
-                                      "Europe": "Europa",
-                                      "Oceania": "Oceania", "Asia": "Ásia", "Africa": "África", "Americas": "Américas",
-                                      "Central America": "América Central",
-                                      "antartica": "Antártida"}
-
-    return pais_traducao_dicionario.get(word)
-
-
 def get_translation_stats(word):
     stats_dicionario: dict = {"IRON": "Ferro", "BRONZE": "Bronze", "SILVER": "Prata", "GOLD": "Ouro",
                               "PLATINUM": "Platina",
@@ -870,4 +743,6 @@ async def perfil_error(ctx, error):
 
 bot.load_extension("minesweeper")
 bot.load_extension("dice")
+bot.load_extension("traducoes")
+bot.load_extension("paises")
 bot.run(token)
