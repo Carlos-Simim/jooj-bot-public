@@ -1,17 +1,16 @@
-import main
+from main import *
 from disnake.ext import commands
-test_guild = [1007317177520619610]
 
 
 class paises(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name="pais", description="Retorna informações sobre um país", guild_ids=test_guild)
-    async def pais(ctx, *, pais: str):
+    @commands.slash_command(name="pais", description="Retorna informações sobre um país")
+    async def pais(self, ctx, *, pais: str):
         await ctx.response.defer()
 
-        if main.aka_brasil.__contains__(pais.lower()):
+        if aka_brasil.__contains__(pais.lower()):
             pais = "Brazil"
 
         try:
@@ -20,7 +19,7 @@ class paises(commands.Cog):
             await ctx.send("Não consegui encontrar esse país!")
             return
 
-        embedVar = main.disnake.Embed(title="Informações de " + pais, color=0x00ff00)
+        embedVar = disnake.Embed(title="Informações de " + pais, color=0x00ff00)
         embedVar.add_field(name="Capital", value=info.get("capital"), inline=True)
         embedVar.add_field(name="População", value=str(info.get("populacao")) + " hab.", inline=True)
         embedVar.add_field(name="Área", value=str(info.get("area")) + "km²", inline=True)
@@ -51,7 +50,7 @@ class paises(commands.Cog):
 
 def getPaisInfo(paisVar):
     url = "https://restcountries.com/v3.1/name/" + paisVar
-    response = main.requests.get(url)
+    response = requests.get(url)
     pais = response.json()[0]
     # pega as informações do país da API e coloca em um dicionário
     pais_dicionario: dict = {"capital": pais["capital"][0], "populacao": pais["population"],

@@ -1,5 +1,5 @@
+from main import *
 from disnake.ext import commands
-import main
 
 
 class traducoes(commands.Cog):
@@ -8,25 +8,25 @@ class traducoes(commands.Cog):
         self.bot = bot
 
     @commands.slash_command(name="romano", description="Converte um número para romano e vice-versa")
-    async def romano(ctx, number):
+    async def romano(self, ctx, number):
         if number.isdigit():
             number = int(number)
             if number > 4999:
                 await ctx.send("O número não pode ser maior que 4999")
                 return
             else:
-                await ctx.send(f"{number} = {main.roman.toRoman(number)}")
+                await ctx.send(f"{number} = {roman.toRoman(number)}")
         else:
-            await ctx.send(f"{number} = {main.roman.fromRoman(number)}")
+            await ctx.send(f"{number} = {roman.fromRoman(number)}")
 
     @romano.error
-    async def romano_error(ctx, error):
+    async def romano_error(self, ctx, error):
         print(error)
         await ctx.send("Um erro desconhecido ocorreu no comando. O erro foi reportado ao dono do bot")
-        await main.dono.send(f"Um erro desconhecido ccorreu no comando:\n{error}")
+        await dono.send(f"Um erro desconhecido ccorreu no comando:\n{error}")
 
     @commands.slash_command(name="morse", description="Traduz um texto para código morse e vice-versa.")
-    async def morse(ctx, *, texto):
+    async def morse(self, ctx, *, texto):
         await ctx.send(get_morse_translation(texto))
 
 
@@ -48,7 +48,7 @@ def get_morse_translation(texto):
         texto = texto.upper()
         for letra in texto:
             try:
-                texto_morse += main.morse_code.get(letra) + ' '
+                texto_morse += morse_code.get(letra) + ' '
             except TypeError:
                 texto_morse += letra + ' '
         return texto_morse
