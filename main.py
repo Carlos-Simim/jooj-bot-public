@@ -58,7 +58,7 @@ class Enquete:
 async def on_ready():
     global dono
     dono = await bot.fetch_user(dono_id)
-    await bot.change_presence(activity=disnake.Activity(type=disnake.ActivityType.watching, name="a"))
+    await bot.change_presence(activity=disnake.Activity(type=disnake.ActivityType.watching, name="Você através da sua webcam"))
     await send_last_commits()
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
