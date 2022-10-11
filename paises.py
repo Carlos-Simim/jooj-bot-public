@@ -1,3 +1,5 @@
+import requests
+
 from main import *
 from disnake.ext import commands
 
@@ -9,9 +11,7 @@ class paises(commands.Cog):
     @commands.slash_command(name="pais", description="Retorna informações sobre um país")
     async def pais(self, ctx, *, pais: str):
         await ctx.response.defer()
-
-        if aka_brasil.__contains__(pais.lower()):
-            pais = "Brazil"
+        pais = pais.lower()
 
         try:
             info = getPaisInfo(pais)

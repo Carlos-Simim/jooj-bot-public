@@ -1,3 +1,7 @@
+import time
+
+import requests
+
 from main import *
 from disnake.ext import commands
 

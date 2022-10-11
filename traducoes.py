@@ -1,3 +1,5 @@
+import roman
+
 from main import *
 from disnake.ext import commands
 

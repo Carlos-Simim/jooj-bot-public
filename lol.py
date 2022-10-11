@@ -1,3 +1,6 @@
+import requests
+from disnake import colour
+
 from main import *
 from disnake.ext import commands
 

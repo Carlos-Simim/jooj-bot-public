@@ -1,3 +1,7 @@
+import random
+
+import requests
+
 from main import *
 from disnake.ext import commands
 
