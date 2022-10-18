@@ -57,7 +57,8 @@ class enquetes(commands.Cog):
             await ctx.response.send_message("Votação criada com sucesso! Não esqueça ela aberta :thumbsup:",
                                             ephemeral=True)
 
-        @commands.event
+
+        @bot.event
         async def on_button_click(interaction):
             try:
                 for votacao in votacoes_ativas:
