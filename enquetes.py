@@ -1,5 +1,8 @@
+import main
 from main import *
 from disnake.ext import commands
+
+votacoes_ativas = main.votacoes_ativas
 
 
 class enquetes(commands.Cog):

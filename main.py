@@ -63,6 +63,7 @@ async def on_ready():
     print(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     await dono.send(f"Bot Reiniciado em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     data_read()
+    bot.load_extension("enquetes")
 
 
 async def send_last_commits():
@@ -116,5 +117,4 @@ bot.load_extension("paises")
 bot.load_extension("lol")
 bot.load_extension("diversos")
 bot.load_extension("economia")
-bot.load_extension("enquetes")
 bot.run(token)
