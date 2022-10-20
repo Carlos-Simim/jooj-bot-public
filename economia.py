@@ -52,7 +52,7 @@ class economia(commands.Cog):
 
         try:
             moeda_origem = currency_name_to_code(moeda_origem)
-            moeda_destino = currency_name_to_code(moeda_destino)
+            moeda_destino = currency_name_to_code(moeda_destino)  # TODO fazer essa verificação e tradução pra código com o endpoint "symbols" da api
         except:
             print("Moeda não encontrada.")
 
@@ -126,7 +126,10 @@ def currency_name_to_code(currency_name):
         "XLM": "XLM",
         "CHAINLINK": "LINK",
         "LINK": "LINK",
-        "STELLAR": "XLM"
+        "STELLAR": "XLM",
+        "YUAN": "CNY",
+        "CNY": "CNY",
+        "REMIMBI": "CNY"
     }
     return currency_code.get(currency_name)
 
@@ -138,9 +141,6 @@ def get_conversao(moeda_origem, moeda_destino, valor):
     headers = {
         "apikey": currency_api
     }
-
-    moeda_origem = currency_name_to_code(moeda_origem)
-    moeda_destino = currency_name_to_code(moeda_destino)
 
     url = f"https://api.apilayer.com/exchangerates_data/convert?to={moeda_destino}&from={moeda_origem}&amount={valor}"
     response = requests.request("GET", url, headers=headers, data=payload)
