@@ -10,7 +10,7 @@
 >>
 >>/campominado | Gera um embed para jogar campominado no discord.
 >>
->>/coinflio | Joga uma moeda (cara ou coroa)
+>>/coinflip | Joga uma moeda (cara ou coroa)
 >>
 >>/d | Rola um dado de quantos lados quiser.
 >>
