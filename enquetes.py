@@ -1,3 +1,5 @@
+import disnake
+
 import main
 from main import *
 from disnake.ext import commands
@@ -136,7 +138,9 @@ def inserir_enquete(ctx):
 def inserir_voters(votacao):
     cursor = my_database.cursor()
     cursor2 = my_database.cursor()
-    cursor2.execute(f"SELECT * FROM public.\"Voters\" WHERE enquete_id=\'{votacao.enquete_id}\'")
+    query = f"SELECT * FROM public.\"Voters\" WHERE enquete_id=\'{votacao.enquete_id}\'"
+    cursor2.execute(query)
+    print(query)
     voters_temp = []
     # Lista com os voters já existentes do banco de dados. Para verificar se existe a necessidade de adicionar um novo voter para aquela votação no banco de dados
     for row in cursor2.fetchall():

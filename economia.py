@@ -2,6 +2,7 @@ import time
 
 import requests
 
+import main
 from main import *
 from disnake.ext import commands
 
@@ -47,17 +48,20 @@ class economia(commands.Cog):
         await ctx.send("Ação não encontrada.")
 
     @commands.slash_command(name="moeda", description="Converte uma moeda para outra. Exemplo: 1 dolar para real")
-    async def converter_moeda(self, ctx, moeda_origem: str, moeda_destino: str, valor: float):
+    async def converter_moeda(self, ctx, moeda_origem: str, moeda_destino: str, valor: float, label: str = None):
         await ctx.response.defer()
 
         try:
             moeda_origem = currency_name_to_code(moeda_origem)
-            moeda_destino = currency_name_to_code(moeda_destino)  # TODO fazer essa verificação e tradução pra código com o endpoint "symbols" da api
+            moeda_destino = currency_name_to_code(moeda_destino)
         except:
             print("Moeda não encontrada.")
 
         result = get_conversao(moeda_origem, moeda_destino, valor)
-        await ctx.send(f"{valor} {moeda_origem} = {round(result * valor, 2)} {moeda_destino}")
+        if label is None:
+            await ctx.send(f"{valor} {moeda_origem} = {round(result * valor, 2)} {moeda_destino}")
+        else:
+            await ctx.send(f"{valor} {moeda_origem} = {round(result * valor, 2)} {moeda_destino} ``{label}``")
 
     @converter_moeda.error
     async def converter_moeda_error(self, ctx, error):

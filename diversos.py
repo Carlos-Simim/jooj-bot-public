@@ -24,25 +24,33 @@ class diversos(commands.Cog):
         await ctx.send('**Cara** :speaking_head:' if random.randint(0, 1) == 0 else '**Coroa** :crown:')
 
     @commands.slash_command(name="gato", description="Retorna um gato fofo (muito based).")
-    async def gato(self, ctx, user: disnake.User = None):
+    async def gato(self, ctx, user: disnake.User = None, user_id: str = None):
         await ctx.response.defer()
         gato_var = getRandomCat()
         if user is not None:
             await user.send(gato_var)
             await ctx.send("Gato enviado para " + user.name)
             return
-
+        if user_id is not None:
+            await ctx.send("Gato enviado para " + user_id)
+            user = await bot.fetch_user(int(user_id))
+            await user.send(gato_var)
+            return
         await ctx.send(gato_var)
 
     @commands.slash_command(name="cachorro", description="Retorna um cachorro fofo (muito based).")
-    async def cachorro(self, ctx, user: disnake.User = None):
+    async def cachorro(self, ctx, user: disnake.User = None, user_id: str = None):
         await ctx.response.defer()
         cachorro_var = getRandomDog()
         if user is not None:
             await user.send(cachorro_var)
             await ctx.send("Cachorro enviado para " + user.name)
             return
-
+        if user_id is not None:
+            await ctx.send("Cachorro enviado para " + user_id)
+            user = await bot.fetch_user(int(user_id))
+            await user.send(cachorro_var)
+            return
         await ctx.send(cachorro_var)
 
     @commands.slash_command(name="limpar", description="Limpa as últimas N mensagens no chat que for usado.")
