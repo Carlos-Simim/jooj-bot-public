@@ -73,7 +73,7 @@ async def send_last_commits():
     commits = get_commits("Carlos-Simim/jooj-bot-public")
 
     for commit in commits:
-        if (commit.commit.author.date - timedelta(hours=3)) > datetime.now() - timedelta(minutes=5):
+        if (commit.commit.author.date - timedelta(hours=3)) > datetime.now() - timedelta(minutes=1):
             embed = disnake.Embed(title=f"Última atualização - {version}",
                                   color=disnake.colour.Color.green())
             embed.add_field(name="Descrição", value=commit.commit.message, inline=False)

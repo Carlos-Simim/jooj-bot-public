@@ -38,6 +38,12 @@ class diversos(commands.Cog):
             return
         await ctx.send(gato_var)
 
+    @gato.error
+    async def gato_error(self, ctx, error):
+        await ctx.send(
+            "Um erro ocorreu. O ID está incorreto ou o usuário não aceita mensagens diretas de desconhecidos.",
+            ephemeral=True)
+
     @commands.slash_command(name="cachorro", description="Retorna um cachorro fofo (muito based).")
     async def cachorro(self, ctx, user: disnake.User = None, user_id: str = None):
         await ctx.response.defer()
@@ -52,6 +58,10 @@ class diversos(commands.Cog):
             await user.send(cachorro_var)
             return
         await ctx.send(cachorro_var)
+
+    @cachorro.error
+    async def cachorro_error(self, ctx, error):
+        await ctx.send("Um erro ocorreu. O ID está incorreto ou o usuário não aceita mensagens diretas de desconhecidos.", ephemeral=True)
 
     @commands.slash_command(name="limpar", description="Limpa as últimas N mensagens no chat que for usado.")
     async def limpar(self, ctx, quantidade: int):
