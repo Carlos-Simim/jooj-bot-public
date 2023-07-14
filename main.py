@@ -16,6 +16,7 @@ currency_api = os.getenv('CURRENCY_API')
 stock_api = os.getenv('STOCK_API')
 version = os.getenv('HEROKU_RELEASE_VERSION')
 heroku_database = os.getenv('DATABASE_URL')
+hypixel_api = os.getenv('HYPIXEL_API')
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
 testing_channel_id = "1019257889967325254"  # id do canal de testes
