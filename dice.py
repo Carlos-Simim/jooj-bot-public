@@ -9,8 +9,14 @@ class dice(commands.Cog):
 
     @commands.slash_command(name="d", description="Rola um dado de quantos lados você quiser.")
     async def d(self, ctx, lados: int):
-        if lados <= 1:
+        if lados < 0:
             await ctx.send(f'{ctx.author.mention}, um dado não pode ter lados negativos, eu heim.')
+            return
+        if lados == 0:
+            await ctx.send(f'{ctx.author.mention}, dado de 0 lados? Sério? :rolling_eyes:')
+            return
+        if lados == 1:
+            await ctx.send(f'{ctx.author.mention}, dado de 1 lado :rocket:')
             return
         if lados == 2:
             await ctx.send(f'{ctx.author.mention}, um dado de 2 lados é uma moeda, use o /coinflip. :rolling_eyes:')
