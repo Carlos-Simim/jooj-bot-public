@@ -19,7 +19,6 @@ heroku_database = os.getenv('DATABASE_URL')
 hypixel_api = os.getenv('HYPIXEL_API')
 changelogs_channel_id = "1019259894676869141"  # ID do canal de changelogs
 dono_id = "279678486841524226"  # id do dono do bot
-testing_channel_id = "1019257889967325254"  # id do canal de testes
 intents = disnake.Intents.default()
 intents.message_content = True
 bot = commands.Bot(help_command=None, case_insensitive=True, intents=intents)
@@ -69,7 +68,6 @@ async def on_ready():
 
 async def send_last_commits():
     channel = bot.get_channel(int(changelogs_channel_id))
-    testing_channel = bot.get_channel(int(testing_channel_id))
     print("Checking for new commits...")
     commits = get_commits("Carlos-Simim/jooj-bot-public")
 
@@ -81,7 +79,6 @@ async def send_last_commits():
             date = commit.commit.author.date - timedelta(hours=3)
             embed.add_field(name="Data", value=(date.strftime("%d/%m/%Y - %H:%M")), inline=False)
             print("Commits enviados")
-            await testing_channel.send(embed=embed)
             await channel.send(embed=embed)
 
     print("Commits enviados")
